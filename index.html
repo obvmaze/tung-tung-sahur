@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tung Tung Snake</title>
+<meta name="description" content="Tung Tung Tung Sahur – Snake mit 67-Äpfeln">
+<meta name="theme-color" content="#14112b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tung Tung">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  body { margin: 0; padding-top: env(safe-area-inset-top, 0px); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;700&display=swap">
+<style>
+  /* Layout: one column, arcade cabinet in the pre-dawn Sahur night; board centered, score above, d-pad below on touch */
+  :root {
+    --night: #14112b;      /* page ground */
+    --night-2: #1f1a42;    /* board tiles */
+    --night-3: #282255;    /* board tiles alt */
+    --moon: #f6e7b4;       /* main text */
+    --muted: #a59fd0;      /* secondary text */
+    --wood: #c58a4a;       /* Tung wood */
+    --wood-dark: #7a4a22;
+    --red: #e3364b;        /* 67 apple */
+    --leaf: #59c26a;
+    --font-display: "Bungee", "Impact", system-ui, sans-serif;
+    --font-body: "Rubik", system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(120% 80% at 50% 0%, #2b2463 0%, var(--night) 60%) fixed, var(--night);
+    color: var(--moon);
+    font-family: var(--font-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px;
+    box-sizing: border-box;
+    -webkit-user-select: none; user-select: none;
+  }
+  .wrap { max-width: 540px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 {
+    font-family: var(--font-display); font-weight: 400; margin: 0;
+    font-size: clamp(1.5rem, 6vw, 2.2rem); line-height: 1; letter-spacing: .02em;
+    color: var(--wood); text-shadow: 0 3px 0 var(--wood-dark);
+    text-wrap: balance;
+  }
+  h1 small { display: block; font-family: var(--font-body); font-size: .8rem; color: var(--muted); text-shadow: none; letter-spacing: .14em; text-transform: uppercase; margin-top: 6px; font-weight: 600; }
+  .scores { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
+  .score { text-align: right; }
+  .score span { display: block; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .score b { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; color: var(--moon); }
+  .board { position: relative; width: 100%; max-width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 4px var(--wood-dark), 0 0 0 8px var(--wood), 0 20px 50px rgba(0,0,0,.5); touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: rgba(20,17,43,.78); text-align: center; padding: 20px;
+  }
+  .overlay h2 { font-family: var(--font-display); font-weight: 400; margin: 0; font-size: clamp(1.6rem, 7vw, 2.4rem); color: var(--moon); text-wrap: balance; }
+  .overlay p { margin: 0; color: var(--muted); max-width: 32ch; line-height: 1.5; }
+  button {
+    font-family: var(--font-display); font-size: 1.1rem; cursor: pointer;
+    background: var(--wood); color: #2a1606; border: 0; border-radius: 10px;
+    padding: 12px 26px; box-shadow: 0 4px 0 var(--wood-dark);
+  }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--wood-dark); }
+  button:focus-visible { outline: 3px solid var(--moon); outline-offset: 3px; }
+  .help { color: var(--muted); font-size: .85rem; text-align: center; line-height: 1.5; margin: 0; }
+  kbd { font-family: var(--font-body); font-weight: 700; background: var(--night-3); color: var(--moon); border-radius: 5px; padding: 1px 6px; }
+  .pad { display: none; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 56px); gap: 8px; justify-content: center; }
+  .pad button { padding: 0; font-size: 1.4rem; }
+  .pad .up { grid-column: 2; grid-row: 1; }
+  .pad .left { grid-column: 1; grid-row: 2; }
+  .pad .down { grid-column: 2; grid-row: 2; }
+  .pad .right { grid-column: 3; grid-row: 2; }
+  @media (pointer: coarse) { .pad { display: grid; } .keys-hint { display: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tung Tung Snake<small>Sammle die 67-Äpfel</small></h1>
+    <div class="scores">
+      <div class="score"><span>Punkte</span><b id="score">0</b></div>
+      <div class="score"><span>Rekord</span><b id="best">0</b></div>
+    </div>
+  </header>
+
+  <div class="board" id="board">
+    <canvas id="cv"></canvas>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">Tung Tung Tung Sahur!</h2>
+      <p id="ovText">Steuere Tung Tung durch die Nacht und schnapp dir jeden 67-Apfel. Nicht in die Wand oder in dich selbst!</p>
+      <button id="startBtn" type="button">Los geht's</button>
+    </div>
+  </div>
+
+  <div class="pad" aria-label="Steuerung">
+    <button class="up" type="button" data-dir="up" aria-label="Hoch">▲</button>
+    <button class="left" type="button" data-dir="left" aria-label="Links">◀</button>
+    <button class="down" type="button" data-dir="down" aria-label="Runter">▼</button>
+    <button class="right" type="button" data-dir="right" aria-label="Rechts">▶</button>
+  </div>
+
+  <p class="help keys-hint">Steuern mit <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> oder <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · Pause mit <kbd>Leertaste</kbd></p>
+  <p class="help">Auf dem Handy kannst du auch übers Spielfeld wischen.</p>
+</div>
+
+<script>
+(() => {
+  const N = 18;                       // grid cells per side
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const board = document.getElementById('board');
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovText = document.getElementById('ovText');
+  const startBtn = document.getElementById('startBtn');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  let snake, dir, queue, apple, score, state, stepMs, acc, last, pops, prev;
+  let best = 0;
+  try { best = +localStorage.getItem('tung-best') || 0; } catch (e) {}
+  bestEl.textContent = best;
+
+  let px = 0, cell = 0;
+  function resize() {
+    const r = board.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    px = Math.round(r.width * dpr);
+    cv.width = cv.height = px;
+    cell = px / N;
+    draw(1);
+  }
+
+  function reset() {
+    const m = Math.floor(N / 2);
+    snake = [[m, m], [m - 1, m], [m - 2, m]];
+    prev = snake.map(s => s.slice());
+    dir = 'right'; queue = [];
+    score = 0; scoreEl.textContent = 0;
+    stepMs = 150; acc = 0; pops = [];
+    placeApple();
+  }
+
+  function placeApple() {
+    const free = [];
+    for (let x = 0; x < N; x++) for (let y = 0; y < N; y++)
+      if (!snake.some(s => s[0] === x && s[1] === y)) free.push([x, y]);
+    apple = free[Math.floor(Math.random() * free.length)];
+  }
+
+  function turn(d) {
+    if (state !== 'play') return;
+    const lastDir = queue.length ? queue[queue.length - 1] : dir;
+    const [ax, ay] = DIRS[lastDir], [bx, by] = DIRS[d];
+    if (ax + bx === 0 && ay + by === 0) return;   // no reversing into yourself
+    if (d === lastDir || queue.length >= 2) return;
+    queue.push(d);
+  }
+
+  function step() {
+    if (queue.length) dir = queue.shift();
+    const [dx, dy] = DIRS[dir];
+    const head = [snake[0][0] + dx, snake[0][1] + dy];
+    const eating = head[0] === apple[0] && head[1] === apple[1];
+    const body = eating ? snake : snake.slice(0, -1);
+    if (head[0] < 0 || head[1] < 0 || head[0] >= N || head[1] >= N ||
+        body.some(s => s[0] === head[0] && s[1] === head[1])) return gameOver();
+    prev = snake.map(s => s.slice());
+    snake.unshift(head);
+    if (eating) {
+      prev.push(prev[prev.length - 1].slice());
+      score += 67; scoreEl.textContent = score;
+      pops.push({ x: apple[0], y: apple[1], t: 0 });
+      tung();
+      stepMs = Math.max(70, stepMs - 4);
+      if (snake.length === N * N) return gameOver(true);
+      placeApple();
+    } else snake.pop();
+  }
+
+  function gameOver(won) {
+    state = 'over';
+    if (score > best) { best = score; bestEl.textContent = best; try { localStorage.setItem('tung-best', best); } catch (e) {} }
+    ovTitle.textContent = won ? 'Unglaublich!' : 'Sahuuur… vorbei!';
+    ovText.textContent = `Du hast ${score / 67} Äpfel gesammelt (${score} Punkte).` + (score > 0 && score === best ? ' Neuer Rekord!' : '');
+    startBtn.textContent = 'Nochmal';
+    overlay.hidden = false;
+    startBtn.focus();
+    knock(90, .25);
+  }
+
+  function start() {
+    reset(); state = 'play'; overlay.hidden = true; last = performance.now();
+    ensureAudio();
+  }
+
+  function togglePause() {
+    if (state === 'play') { state = 'pause'; ovTitle.textContent = 'Pause'; ovText.textContent = 'Tung Tung wartet auf dich.'; startBtn.textContent = 'Weiter'; overlay.hidden = false; }
+    else if (state === 'pause') { state = 'play'; overlay.hidden = true; last = performance.now(); }
+  }
+
+  startBtn.addEventListener('click', () => state === 'pause' ? togglePause() : start());
+
+  // --- sound: a little wooden "tung" knock ---
+  let ac = null;
+  function ensureAudio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume && ac.resume(); } catch (e) {} }
+  function knock(freq, len) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(freq * 2, t); o.frequency.exponentialRampToValueAtTime(freq, t + .08);
+    g.gain.setValueAtTime(.35, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + len);
+  }
+  function tung() { knock(220, .12); setTimeout(() => knock(220, .12), 110); setTimeout(() => knock(160, .2), 220); }
+
+  // --- input ---
+  const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
+  document.addEventListener('keydown', e => {
+    if (KEYS[e.key]) { e.preventDefault(); if (state !== 'play' && state !== 'pause' && e.key.startsWith('Arrow')) start(); turn(KEYS[e.key]); }
+    else if (e.key === ' ') { e.preventDefault(); if (state === 'play' || state === 'pause') togglePause(); else start(); }
+  });
+  document.querySelectorAll('.pad button').forEach(b =>
+    b.addEventListener('pointerdown', e => { e.preventDefault(); if (state !== 'play') { if (state === 'pause') togglePause(); else start(); } turn(b.dataset.dir); }));
+  let sx = null, sy = null;
+  board.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
+  board.addEventListener('pointerup', e => {
+    if (sx === null) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+
+  // --- drawing ---
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+  function drawBoard() {
+    for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) {
+      ctx.fillStyle = (x + y) % 2 ? '#1f1a42' : '#282255';
+      ctx.fillRect(x * cell, y * cell, cell + 1, cell + 1);
+    }
+  }
+
+  function drawApple(gx, gy, time) {
+    const cx = (gx + .5) * cell, cy = (gy + .5) * cell;
+    const bob = Math.sin(time / 250) * cell * .04;
+    const r = cell * .42;
+    ctx.save(); ctx.translate(cx, cy + bob);
+    // leaf + stem
+    ctx.fillStyle = '#59c26a';
+    ctx.beginPath(); ctx.ellipse(r * .35, -r * 1.02, r * .38, r * .18, -.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#6b3d1a'; ctx.lineWidth = cell * .06; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -r * .8); ctx.lineTo(r * .05, -r * 1.15); ctx.stroke();
+    // badge
+    ctx.fillStyle = '#e3364b';
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#ffd56b'; ctx.lineWidth = cell * .05;
+    ctx.beginPath(); ctx.arc(0, 0, r * .84, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.round(r * 1.02)}px Bungee, Impact, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('67', 0, r * .06);
+    ctx.restore();
+  }
+
+  function drawLog(x, y, i) {
+    const pad = cell * .08, s = cell - pad * 2;
+    ctx.fillStyle = i % 2 ? '#b97d40' : '#c58a4a';
+    rr(x - s / 2, y - s / 2, s, s, cell * .22); ctx.fill();
+    ctx.strokeStyle = 'rgba(122,74,34,.75)'; ctx.lineWidth = cell * .05;
+    ctx.beginPath(); ctx.arc(x, y, s * .26, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, s * .1, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  function drawHead(x, y, d) {
+    const s = cell * 1.08;               // head is a bit bigger than a cell
+    const [dx, dy] = DIRS[d];
+    // bat, held on the side opposite to movement-left
+    ctx.save(); ctx.translate(x, y);
+    const ang = Math.atan2(dy, dx) + Math.PI / 2;
+    ctx.rotate(ang);
+    ctx.fillStyle = '#e8c48a'; ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = cell * .04;
+    ctx.beginPath();
+    ctx.moveTo(s * .45, s * .1); ctx.lineTo(s * .62, -s * .62);
+    ctx.lineTo(s * .82, -s * .58); ctx.lineTo(s * .58, s * .14); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // log head (always upright so the face stays readable)
+    ctx.fillStyle = '#d69a57';
+    rr(x - s / 2, y - s / 2, s, s, cell * .26); ctx.fill();
+    ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = cell * .05; ctx.stroke();
+    ctx.strokeStyle = 'rgba(122,74,34,.45)'; ctx.lineWidth = cell * .03;
+    for (const k of [-.3, .32]) { ctx.beginPath(); ctx.moveTo(x - s * .4, y + s * k); ctx.quadraticCurveTo(x, y + s * k + cell * .05, x + s * .4, y + s * k); ctx.stroke(); }
+    // eyes look where he's going
+    const ex = s * .19, ey = -s * .08, er = s * .14;
+    for (const sgn of [-1, 1]) {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + sgn * ex, y + ey, er, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x + sgn * ex + dx * er * .45, y + ey + dy * er * .45, er * .5, 0, Math.PI * 2); ctx.fill();
+    }
+    // brows
+    ctx.strokeStyle = '#3d2410'; ctx.lineWidth = cell * .06; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - ex - er, y + ey - er * 1.5); ctx.lineTo(x - ex + er, y + ey - er * 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + ex + er, y + ey - er * 1.5); ctx.lineTo(x + ex - er, y + ey - er * 1.2); ctx.stroke();
+    // mouth
+    ctx.strokeStyle = '#3d2410'; ctx.lineWidth = cell * .05;
+    ctx.beginPath(); ctx.arc(x, y + s * .16, s * .12, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+  }
+
+  function draw(t, time = performance.now()) {
+    if (!px) return;
+    drawBoard();
+    if (!snake) return;
+    drawApple(apple[0], apple[1], time);
+    const pos = i => {
+      const a = prev[i] || snake[i], b = snake[i];
+      return [((a[0] + (b[0] - a[0]) * t) + .5) * cell, ((a[1] + (b[1] - a[1]) * t) + .5) * cell];
+    };
+    for (let i = snake.length - 1; i >= 1; i--) { const [x, y] = pos(i); drawLog(x, y, i); }
+    const [hx, hy] = pos(0);
+    drawHead(hx, hy, dir);
+    // "TUNG!" pop-ups
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of pops) {
+      const a = 1 - p.t;
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.fillStyle = '#ffd56b';
+      ctx.font = `${Math.round(cell * .7)}px Bungee, Impact, sans-serif`;
+      ctx.fillText('TUNG!', (p.x + .5) * cell, (p.y + .5 - p.t * 1.6) * cell);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function loop(now) {
+    if (state === 'play') {
+      acc += now - last;
+      while (acc >= stepMs && state === 'play') { acc -= stepMs; step(); }
+    }
+    last = now;
+    for (const p of pops) p.t += 1 / 50;
+    pops = pops.filter(p => p.t < 1);
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    draw(state === 'play' && smooth ? Math.min(1, acc / stepMs) : 1, now);
+    requestAnimationFrame(loop);
+  }
+
+  reset(); state = 'ready';
+  window.addEventListener('resize', resize);
+  resize();
+  document.fonts && document.fonts.ready.then(() => draw(1));
+  last = performance.now();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<script>
+  // Offline-Modus: Service Worker speichert das Spiel auf dem Gerät
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
